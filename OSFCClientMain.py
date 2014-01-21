@@ -1,10 +1,8 @@
 '''
 Author:     Dorion Beaudin
 
-About:      This python script serves as a client towards OSFC
-            until such a time as the official OSFC client is
-            released.
-            It was intended for personal use only.
+About:      This python script serves as a client towards OSFC until such a time as the official OSFC client is released.
+            It is intended for personal use only, and will likely never see a public release.
 
 Copyright:  Copyright 2014, Dorion Beaudin
 
@@ -17,9 +15,12 @@ Email:      dorionbeaudin@live.ca
 import socket   #for sockets
 import json #for JSON decode
 import sys  #for exit
+import time #for waiting
 import threading #for multi-threading
 
 global loop #Used to tell threads that it's time to pack up and quit.
+
+loop = 1
 
 class consoleThread(threading.Thread):
     def __init__(self,userInput,msg,sendTo,friend,channel,reqPassword,password,rawData):
@@ -44,10 +45,8 @@ class consoleThread(threading.Thread):
             print 'Network error: Send failed. Exiting.'
             s.close()
             loop = 0
-            sys.exit()
 
     def run(self):
-        loop = 1
         self.user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
         self.sendData('{"cmd": "register", "handle": "' + self.user + '"}\x00')
         while loop == 1:
@@ -56,11 +55,11 @@ class consoleThread(threading.Thread):
             easy for the user to understand and type and then converts the results into
             something the server can understand.
             '''
-            self.userInput = raw_input("<= ")
+            time.sleep(2.5)
+            self.userInput = raw_input("Enter command: ")
             if self.userInput == "exit":
                 s.close()
                 loop = 0
-                sys.exit()
             elif self.userInput == "help":
                 print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
             elif self.userInput == "msg":
@@ -96,7 +95,6 @@ class recieveDataThread(threading.Thread):
         threading.Thread.__init__(self)
         self.replied = 0
     def run(self):
-        loop = 1
         while loop == 1:
             try:
                 self.serverreply = s.recv(4096) #Wait for a response repeatedly.
@@ -104,7 +102,8 @@ class recieveDataThread(threading.Thread):
             except:
                 self.replied = 0
             if self.replied == 1:
-                print "=> \n" + json.dumps(self.serverreply, sort_keys=True, indent=4, separators=(',', ': '))
+
+                print "\n=> \n" + json.dumps(self.serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
                 '''
                 A bit of formatting of the response, to make the whole thing a bit easier to read.
                 I don't know how to properly parse JSON yet, but that's not this client's intention.
@@ -179,3 +178,4 @@ Thread2.start()
 Thread1.join()
 Thread2.join()
 print 'Done.\n'
+sys.exit()
