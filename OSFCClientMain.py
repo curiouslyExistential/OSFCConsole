@@ -20,7 +20,7 @@ from threading import Thread#for multi-threading
 from Queue import Queue
 
 
-def sendData(self,data):
+def sendData(self,data,q):
     try :
         #Set the whole string
         print "\n<= \n" + data
@@ -35,8 +35,8 @@ def sendData(self,data):
 def consoleThread(self, q):
     loop = 1
     q.put(loop)
-    self.user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
-    self.sendData('{"cmd": "register", "handle": "' + self.user + '"}\x00')
+    user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
+    sendData('{"cmd": "register", "handle": "' + user + '"}\x00', q)
     while True:
         localloop = q.get()
         if localloop is 0: return
@@ -46,38 +46,38 @@ def consoleThread(self, q):
         something the server can understand.
         '''
         time.sleep(2.5)
-        self.userInput = raw_input("Enter command: ")
-        if self.userInput == "exit":
+        userInput = raw_input("Enter command: ")
+        if userInput == "exit":
             s.close()
             localloop = 0
             q.put(localloop)
-        elif self.userInput == "help":
+        elif userInput == "help":
             print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
-        elif self.userInput == "msg":
-            self.sendTo = raw_input("Send message to who?: ")
-            self.msg = raw_input("What is the message?: ")
-            self.sendData('{"cmd": "msg", "handle": "' + self.sendTo + '", "msg": "' + self.msg + '"}\x00')
-        elif self.userInput == "who":
-            self.sendData('{"cmd": "who"}\x00')
-        elif self.userInput == "friend":
-            self.friend = raw_input("Who to friend?(Only one at a time): ")
-            self.sendData('{"cmd": "friend", "handles": ["' + self.friend + '"]}\x00')
-        elif self.userInput == "join":
-            self.channel = raw_input("Join what channel?(Ex. #Testing): ")
-            self.reqPassword = raw_input("Does the channel require a password?(Y/N): ")
-            if self.reqPassword == "Y":
-                self.password = raw_input("Channel password?: ")
-                self.sendData('{"cmd": "join", "channel": "' + self.channel + '", "password": "' + self.password + '"}\x00')
-            elif self.reqPassword == "N":
-                self.sendData('{"cmd": "join", "channel": "' + self.channel + '"}\x00')
+        elif userInput == "msg":
+            sendTo = raw_input("Send message to who?: ")
+            msg = raw_input("What is the message?: ")
+            sendData('{"cmd": "msg", "handle": "' + sendTo + '", "msg": "' + msg + '"}\x00', q)
+        elif userInput == "who":
+            sendData('{"cmd": "who"}\x00')
+        elif userInput == "friend":
+            friend = raw_input("Who to friend?(Only one at a time): ")
+            sendData('{"cmd": "friend", "handles": ["' + friend + '"]}\x00', q)
+        elif userInput == "join":
+            channel = raw_input("Join what channel?(Ex. #Testing): ")
+            reqPassword = raw_input("Does the channel require a password?(Y/N): ")
+            if reqPassword == "Y":
+                password = raw_input("Channel password?: ")
+                sendData('{"cmd": "join", "channel": "' + channel + '", "password": "' + password + '"}\x00', q)
+            elif reqPassword == "N":
+                sendData('{"cmd": "join", "channel": "' + channel + '"}\x00', q)
             else:
                 print "You did not enter Y/N"
-        elif self.userInput == "part":
-            self.channel = raw_input("Part what channel?(Ex. #Testing): ")
-            self.sendData('{"cmd": "part", "channel": "' + self.channel + '"}\x00')
-        elif self.userInput == "raw":
-            self.rawsend = raw_input("Type JSON-formatted command: ")
-            self.sendData(self.rawsend)
+        elif userInput == "part":
+            channel = raw_input("Part what channel?(Ex. #Testing): ")
+            sendData('{"cmd": "part", "channel": "' + channel + '"}\x00', q)
+        elif userInput == "raw":
+            rawsend = raw_input("Type JSON-formatted command: ")
+            sendData(rawsend, q)
         else:
             print "Invalid command. Valid commands are: help, exit, msg, who, friend, join, part, raw"
 
@@ -89,13 +89,13 @@ def recieveDataThread(self,q):
             s.close()
             return
         try:
-            self.serverreply = s.recv(4096) #Wait for a response repeatedly.
-            self.replied = 1
+            serverreply = s.recv(4096) #Wait for a response repeatedly.
+            replied = 1
         except:
-            self.replied = 0
-        if self.replied == 1:
+            replied = 0
+        if replied == 1:
 
-            print "\n=> \n" + json.dumps(self.serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
+            print "\n=> \n" + json.dumps(serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
             '''
              A bit of formatting of the response, to make the whole thing a bit easier to read.
              I don't know how to properly parse JSON yet, but that's not this client's intention.
@@ -163,11 +163,12 @@ except:
 print 'Socket Connected to ' + usedhost + ' on ip ' + remote_ip + '\n'
 
 queue = Queue()
-Thread1 = Thread( target=consoleThread, args=("Client",queue)) #Start threads. Let the fun begin.
-Thread2 = Thread( target=recieveDataThread, args=("Server",queue))
-Thread1.start()
-Thread2.start()
-Thread1.join()
-Thread2.join()
+Client = Thread( target=consoleThread, args=("Client",queue)) #Start threads. Let the fun begin.
+Server = Thread( target=recieveDataThread, args=("Server",queue))
+Client.start()
+time.sleep(1)
+Server.start()
+Client.join()
+Server.join()
 print 'Done.\n'
 sys.exit()
