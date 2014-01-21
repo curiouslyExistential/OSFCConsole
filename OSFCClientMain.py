@@ -16,100 +16,92 @@ import socket   #for sockets
 import json #for JSON decode
 import sys  #for exit
 import time #for waiting
-import threading #for multi-threading
+from threading import Thread#for multi-threading
+from Queue import Queue
 
-global loop #Used to tell threads that it's time to pack up and quit.
 
-loop = 1
+def sendData(self,data):
+    try :
+        #Set the whole string
+        print "\n<= \n" + data
+        s.sendall(data)
+    except socket.error:
+        #Send failed
+        print 'Network error: Send failed. Exiting.'
+        s.close()
+        loop = 0
+        q.put(loop)
 
-class consoleThread(threading.Thread):
-    def __init__(self,userInput,msg,sendTo,friend,channel,reqPassword,password,rawData):
-        threading.Thread.__init__(self)
-        self.userInput = 0
-        self.msg = 0
-        self.sendTo = 0
-        self.friend = 0
-        self.channel = 0
-        self.reqPassword = 0
-        self.password = 0
-        self.data = 0
-        self.rawsend = 0
-
-    def sendData(self,data):
-        try :
-            #Set the whole string
-            print "<= " + data
-            s.sendall(data)
-        except socket.error:
-            #Send failed
-            print 'Network error: Send failed. Exiting.'
+def consoleThread(self, q):
+    loop = 1
+    q.put(loop)
+    self.user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
+    self.sendData('{"cmd": "register", "handle": "' + self.user + '"}\x00')
+    while True:
+        localloop = q.get()
+        if localloop is 0: return
+        '''
+        Best described as a converter. It takes in commands and a syntax that is
+        easy for the user to understand and type and then converts the results into
+        something the server can understand.
+        '''
+        time.sleep(2.5)
+        self.userInput = raw_input("Enter command: ")
+        if self.userInput == "exit":
             s.close()
-            loop = 0
-
-    def run(self):
-        self.user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
-        self.sendData('{"cmd": "register", "handle": "' + self.user + '"}\x00')
-        while loop == 1:
-            '''
-            Best described as a converter. It takes in commands and a syntax that is
-            easy for the user to understand and type and then converts the results into
-            something the server can understand.
-            '''
-            time.sleep(2.5)
-            self.userInput = raw_input("Enter command: ")
-            if self.userInput == "exit":
-                s.close()
-                loop = 0
-            elif self.userInput == "help":
-                print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
-            elif self.userInput == "msg":
-                self.sendTo = raw_input("Send message to who?: ")
-                self.msg = raw_input("What is the message?: ")
-                self.sendData('{"cmd": "msg", "handle": "' + self.sendTo + '", "msg": "' + self.msg + '"}\x00')
-            elif self.userInput == "who":
-                self.sendData('{"cmd": "who"}\x00')
-            elif self.userInput == "friend":
-                self.friend = raw_input("Who to friend?(Only one at a time): ")
-                self.sendData('{"cmd": "friend", "handles": ["' + self.friend + '"]}\x00')
-            elif self.userInput == "join":
-                self.channel = raw_input("Join what channel?(Ex. #Testing): ")
-                self.reqPassword = raw_input("Does the channel require a password?(Y/N): ")
-                if self.reqPassword == "Y":
-                    self.password = raw_input("Channel password?: ")
-                    self.sendData('{"cmd": "join", "channel": "' + self.channel + '", "password": "' + self.password + '"}\x00')
-                elif self.reqPassword == "N":
-                    self.sendData('{"cmd": "join", "channel": "' + self.channel + '"}\x00')
-                else:
-                    print "You did not enter Y/N"
-            elif self.userInput == "part":
-                self.channel = raw_input("Part what channel?(Ex. #Testing): ")
-                self.sendData('{"cmd": "part", "channel": "' + self.channel + '"}\x00')
-            elif self.userInput == "raw":
-                self.rawsend = raw_input("Type JSON-formatted command: ")
-                self.sendData(self.rawsend)
+            localloop = 0
+            q.put(localloop)
+        elif self.userInput == "help":
+            print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
+        elif self.userInput == "msg":
+            self.sendTo = raw_input("Send message to who?: ")
+            self.msg = raw_input("What is the message?: ")
+            self.sendData('{"cmd": "msg", "handle": "' + self.sendTo + '", "msg": "' + self.msg + '"}\x00')
+        elif self.userInput == "who":
+            self.sendData('{"cmd": "who"}\x00')
+        elif self.userInput == "friend":
+            self.friend = raw_input("Who to friend?(Only one at a time): ")
+            self.sendData('{"cmd": "friend", "handles": ["' + self.friend + '"]}\x00')
+        elif self.userInput == "join":
+            self.channel = raw_input("Join what channel?(Ex. #Testing): ")
+            self.reqPassword = raw_input("Does the channel require a password?(Y/N): ")
+            if self.reqPassword == "Y":
+                self.password = raw_input("Channel password?: ")
+                self.sendData('{"cmd": "join", "channel": "' + self.channel + '", "password": "' + self.password + '"}\x00')
+            elif self.reqPassword == "N":
+                self.sendData('{"cmd": "join", "channel": "' + self.channel + '"}\x00')
             else:
-                print "Invalid command. Valid commands are: help, exit, msg, who, friend, join, part, raw"
+                print "You did not enter Y/N"
+        elif self.userInput == "part":
+            self.channel = raw_input("Part what channel?(Ex. #Testing): ")
+            self.sendData('{"cmd": "part", "channel": "' + self.channel + '"}\x00')
+        elif self.userInput == "raw":
+            self.rawsend = raw_input("Type JSON-formatted command: ")
+            self.sendData(self.rawsend)
+        else:
+            print "Invalid command. Valid commands are: help, exit, msg, who, friend, join, part, raw"
 
-class recieveDataThread(threading.Thread):
-    def __init__(self,serverreply,replied):
-        threading.Thread.__init__(self)
-        self.replied = 0
-    def run(self):
-        while loop == 1:
-            try:
-                self.serverreply = s.recv(4096) #Wait for a response repeatedly.
-                self.replied = 1
-            except:
-                self.replied = 0
-            if self.replied == 1:
 
-                print "\n=> \n" + json.dumps(self.serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
-                '''
-                A bit of formatting of the response, to make the whole thing a bit easier to read.
-                I don't know how to properly parse JSON yet, but that's not this client's intention.
-                I only need what I'm sending to be formatted and easy to send. I can look at the
-                response myself and understand it's meaning just fine.
-                '''
+def recieveDataThread(self,q):
+    while True:
+        localloop = q.get()
+        if localloop is 0:
+            s.close()
+            return
+        try:
+            self.serverreply = s.recv(4096) #Wait for a response repeatedly.
+            self.replied = 1
+        except:
+            self.replied = 0
+        if self.replied == 1:
+
+            print "\n=> \n" + json.dumps(self.serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
+            '''
+             A bit of formatting of the response, to make the whole thing a bit easier to read.
+             I don't know how to properly parse JSON yet, but that's not this client's intention.
+             I only need what I'm sending to be formatted and easy to send. I can look at the
+             response myself and understand it's meaning just fine.
+            '''
 
 try:
     #create an AF_INET, STREAM socket (TCP)
@@ -170,9 +162,9 @@ except:
         sys.exit()
 print 'Socket Connected to ' + usedhost + ' on ip ' + remote_ip + '\n'
 
-
-Thread1 = consoleThread(0,0,0,0,0,0,0,0) #Start threads. Let the fun begin.
-Thread2 = recieveDataThread(0,0)
+queue = Queue()
+Thread1 = Thread( target=consoleThread, args=("Client",queue)) #Start threads. Let the fun begin.
+Thread2 = Thread( target=recieveDataThread, args=("Server",queue))
 Thread1.start()
 Thread2.start()
 Thread1.join()
