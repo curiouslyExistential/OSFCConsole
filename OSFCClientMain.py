@@ -8,7 +8,7 @@ Copyright:  Copyright 2014, Dorion Beaudin
 
 License:    GNU GENERAL PUBLIC LICENSE Version 2
 
-Version:    0.0.1
+Version:    0.0.2
 
 Email:      dorionbeaudin@live.ca
 '''
@@ -16,11 +16,11 @@ import socket   #for sockets
 import json #for JSON decode
 import sys  #for exit
 import time #for waiting
-from threading import Thread#for multi-threading
+from threading import Thread #for multi-threading
 from Queue import Queue
 
 
-def sendData(self,data,q):
+def sendData(data, q):
     try :
         #Set the whole string
         print "\n<= \n" + data
@@ -29,17 +29,14 @@ def sendData(self,data,q):
         #Send failed
         print 'Network error: Send failed. Exiting.'
         s.close()
-        loop = 0
-        q.put(loop)
+        q.put(None)
 
-def consoleThread(self, q):
-    loop = 1
-    q.put(loop)
+def consoleThread(threadname, q):
     user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
     sendData('{"cmd": "register", "handle": "' + user + '"}\x00', q)
     while True:
-        localloop = q.get()
-        if localloop is 0: return
+        localloop = 1
+        q.put(localloop)
         '''
         Best described as a converter. It takes in commands and a syntax that is
         easy for the user to understand and type and then converts the results into
@@ -49,8 +46,8 @@ def consoleThread(self, q):
         userInput = raw_input("Enter command: ")
         if userInput == "exit":
             s.close()
-            localloop = 0
-            q.put(localloop)
+            q.put(None)
+            return
         elif userInput == "help":
             print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
         elif userInput == "msg":
@@ -58,7 +55,7 @@ def consoleThread(self, q):
             msg = raw_input("What is the message?: ")
             sendData('{"cmd": "msg", "handle": "' + sendTo + '", "msg": "' + msg + '"}\x00', q)
         elif userInput == "who":
-            sendData('{"cmd": "who"}\x00')
+            sendData('{"cmd": "who"}\x00', q)
         elif userInput == "friend":
             friend = raw_input("Who to friend?(Only one at a time): ")
             sendData('{"cmd": "friend", "handles": ["' + friend + '"]}\x00', q)
@@ -81,11 +78,11 @@ def consoleThread(self, q):
         else:
             print "Invalid command. Valid commands are: help, exit, msg, who, friend, join, part, raw"
 
-
-def recieveDataThread(self,q):
+def recieveDataThread(threadname, q):
+    s.settimeout(3)
     while True:
         localloop = q.get()
-        if localloop is 0:
+        if localloop is None:
             s.close()
             return
         try:
@@ -94,13 +91,12 @@ def recieveDataThread(self,q):
         except:
             replied = 0
         if replied == 1:
-
-            print "\n=> \n" + json.dumps(serverreply.translate(None, "\\"), sort_keys=True, indent=4, separators=(',', ': '))
+            print "\n=> \n" + json.dumps(serverreply, sort_keys=True, indent=4, separators=(',', ': '))
             '''
-             A bit of formatting of the response, to make the whole thing a bit easier to read.
-             I don't know how to properly parse JSON yet, but that's not this client's intention.
-             I only need what I'm sending to be formatted and easy to send. I can look at the
-             response myself and understand it's meaning just fine.
+            A bit of formatting of the response, to make the whole thing a bit easier to read.
+            I don't know how to properly parse JSON yet, but that's not this client's intention.
+            I only need what I'm sending to be formatted and easy to send. I can look at the
+            response myself and understand it's meaning just fine.
             '''
 
 try:
@@ -163,6 +159,8 @@ except:
 print 'Socket Connected to ' + usedhost + ' on ip ' + remote_ip + '\n'
 
 queue = Queue()
+localloop = 1
+queue.put(localloop)
 Client = Thread( target=consoleThread, args=("Client",queue)) #Start threads. Let the fun begin.
 Server = Thread( target=recieveDataThread, args=("Server",queue))
 Client.start()
