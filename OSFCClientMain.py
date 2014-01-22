@@ -34,6 +34,8 @@ def sendData(data, q):
 def consoleThread(threadname, q):
     user = raw_input("Handle: ") #Initialize handle and establish handle with server using the "register" command.
     sendData('{"cmd": "register", "handle": "' + user + '"}\x00', q)
+    time.sleep(1)
+    print 'Type "check" to check for a message. Type "help" for a list of available commands.'
     while True:
         localloop = 1
         q.put(localloop)
@@ -42,14 +44,16 @@ def consoleThread(threadname, q):
         easy for the user to understand and type and then converts the results into
         something the server can understand.
         '''
-        time.sleep(2.5)
+        time.sleep(2)
         userInput = raw_input("Enter command: ")
         if userInput == "exit":
             s.close()
             q.put(None)
             return
         elif userInput == "help":
-            print 'Valid commands are: help, exit, msg, who, friend, join, part, raw'
+            print 'Valid commands are: help, check, exit, msg, who, friend, join, part, raw'
+        elif userInput == "check":
+            print ''
         elif userInput == "msg":
             sendTo = raw_input("Send message to who?: ")
             msg = raw_input("What is the message?: ")
