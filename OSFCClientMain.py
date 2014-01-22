@@ -53,7 +53,7 @@ def consoleThread(threadname, q):
         elif userInput == "msg":
             sendTo = raw_input("Send message to who?: ")
             msg = raw_input("What is the message?: ")
-            sendData('{"cmd": "msg", "handle": "' + sendTo + '", "msg": "' + msg + '"}\x00', q)
+            sendData('{"cmd": "msg", "recp": "' + sendTo + '", "msg": "' + msg + '"}\x00', q)
         elif userInput == "who":
             sendData('{"cmd": "who"}\x00', q)
         elif userInput == "friend":
